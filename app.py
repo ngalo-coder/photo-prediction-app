@@ -7,7 +7,6 @@ import cv2
 import logging
 
 app = Flask(__name__)
-app.logger.setLevel(logging.INFO)
 
 # Load model
 model = load_model('model/model.h5')
@@ -115,8 +114,9 @@ def predict():
             digit_count=len(predictions))
         
     except Exception as e:
-        app.logger.error(f"Error: {str(e)}")
+        logging.error(f"Error: {str(e)}")
         return jsonify(error=str(e)), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
