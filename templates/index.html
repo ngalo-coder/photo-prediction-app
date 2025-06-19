@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST Digit Recognition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-box {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+            transition: all 0.3s;
+        }
+        .upload-box:hover {
+            border-color: #4CAF50;
+            background-color: #f0fff0;
+        }
+        .upload-box.drag-over {
+            border-color: #2196F3;
+            background-color: #e3f2fd;
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 20px auto;
+            display: none;
+        }
+        #file-input {
+            display: none;
+        }
+        .upload-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            display: inline-block;
+            margin-top: 15px;
+        }
+        .upload-btn:hover {
+            background-color: #45a049;
+        }
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #e8f5e9;
+            display: none;
+        }
+        .digit-results {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .digit-item {
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .digit-image {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+            margin-bottom: 5px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #4CAF50;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error-box {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #ffebee;
+            color: #b71c1c;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MNIST Digit Recognition</h1>
+        
+        <div class="upload-box" id="upload-area">
+            <p>Drag & drop an image here or</p>
+            <input type="file" id="file-input" accept="image/*">
+            <button class="upload-btn" id="browse-btn">Browse Files</button>
+            <p>Supported formats: JPG, PNG, etc.</p>
+            <p>Upload a single digit or multiple digits in a grid or sequence</p>
+        </div>
+        
+        <img id="preview" alt="Image preview">
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing image and making predictions...</p>
+        </div>
+        
+        <div class="result-box" id="result-box">
+            <h2>Prediction Results</h2>
+            <div id="result-text"></div>
+            <div class="digit-results" id="digit-results"></div>
+        </div>
+        
+        <div class="error-box" id="error-box">
+            <h2>Error</h2>
+            <div id="error-text"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const previewImg = document.getElementById('preview');
+        const loadingDiv = document.getElementById('loading');
+        const resultBox = document.getElementById('result-box');
+        const resultText = document.getElementById('result-text');
+        const digitResults = document.getElementById('digit-results');
+        const errorBox = document.getElementById('error-box');
+        const errorText = document.getElementById('error-text');
+
+        // Open file dialog when browse button is clicked
+        browseBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop event handlers
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            uploadArea.classList.add('drag-over');
+        }
+
+        function unhighlight() {
+            uploadArea.classList.remove('drag-over');
+        }
+
+        // Handle dropped file
+        uploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            handleFile(file);
+        });
+
+        // Process the selected/dropped file
+        function handleFile(file) {
+            // Reset UI
+            resultBox.style.display = 'none';
+            errorBox.style.display = 'none';
+            digitResults.innerHTML = '';
+            
+            // Validate file
+            if (!file.type.match('image.*')) {
+                showError('Please select an image file (JPG, PNG, etc.)');
+                return;
+            }
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Prepare and send the form data
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Show loading indicator
+            loadingDiv.style.display = 'block';
+            
+            // Send request to server
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                loadingDiv.style.display = 'none';
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error || 'Server error') });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Display results
+                resultBox.style.display = 'block';
+                
+                if (data.prediction !== undefined) {
+                    // Single digit result
+                    resultText.innerHTML = `<p>Predicted digit: <strong>${data.prediction}</strong></p>`;
+                    
+                    // Show the digit preview
+                    digitResults.innerHTML = `
+                        <div class="digit-item">
+                            <img src="${previewImg.src}" class="digit-image">
+                            <div>Prediction: ${data.prediction}</div>
+                        </div>
+                    `;
+                } else if (data.predictions) {
+                    // Multiple digit results
+                    resultText.innerHTML = `<p>Predicted digits sequence: <strong>${data.predictions.join(', ')}</strong></p>`;
+                    
+                    // Create a canvas to split the grid (simplified)
+                    const digits = data.predictions;
+                    digitResults.innerHTML = '';
+                    
+                    // Create a container for each digit
+                    digits.forEach((digit, index) => {
+                        const digitDiv = document.createElement('div');
+                        digitDiv.className = 'digit-item';
+                        digitDiv.innerHTML = `
+                            <div>Digit ${index+1}:</div>
+                            <img src="${previewImg.src}" class="digit-image">
+                            <div>Prediction: <strong>${digit}</strong></div>
+                        `;
+                        digitResults.appendChild(digitDiv);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loadingDiv.style.display = 'none';
+                showError(error.message || 'An error occurred during processing');
+            });
+        }
+
+        function showError(message) {
+            errorBox.style.display = 'block';
+            errorText.textContent = message;
+        }
+    </script>
+</body>
+</html>

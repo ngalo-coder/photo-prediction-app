@@ -1,0 +1,118 @@
+body {
+    background: linear-gradient(120deg, #f0f4f9 0%, #d9e7fa 100%);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    margin-top: 60px;
+    color: #2d3a4b;
+    letter-spacing: 1px;
+    font-size: 2.2rem;
+}
+
+form {
+    background: #fff;
+    padding: 36px 48px 28px 48px;
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(44, 62, 80, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 32px;
+    min-width: 320px;
+}
+
+.custom-file-upload {
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-bottom: 14px;
+    display: inline-block;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
+}
+
+.custom-file-upload:hover {
+    background: #2563eb;
+    box-shadow: 0 4px 16px rgba(44, 62, 80, 0.10);
+}
+
+input[type="file"] {
+    display: none;
+}
+
+#file-chosen {
+    margin-bottom: 22px;
+    color: #555;
+    font-size: 0.98rem;
+    font-style: italic;
+}
+
+button[type="submit"] {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 6px;
+    font-size: 1.08rem;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
+    margin-top: 10px;
+}
+
+button[type="submit"]:hover {
+    background: #1e40af;
+    box-shadow: 0 4px 16px rgba(44, 62, 80, 0.10);
+}
+
+.result-box {
+    margin-top: 32px;
+    background: #e6f0ff;
+    border: 1.5px solid #4f8cff;
+    border-radius: 8px;
+    padding: 22px 36px;
+    font-size: 1.25rem;
+    color: #1e40af;
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
+    display: inline-block;
+    text-align: center;
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.result-label {
+    font-weight: bold;
+    margin-right: 8px;
+    color: #2563eb;
+}
+
+.result-value {
+    font-size: 1.4rem;
+    color: #0a2540;
+}
+
+@media (max-width: 500px) {
+    form {
+        padding: 24px 10px 18px 10px;
+        min-width: unset;
+        width: 90vw;
+    }
+    h1 {
+        font-size: 1.3rem;
+        margin-top: 30px;
+    }
+    .result-box {
+        padding: 14px 10px;
+        font-size: 1rem;
+    }
+}

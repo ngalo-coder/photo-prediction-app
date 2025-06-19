@@ -1,0 +1,10 @@
+uploads/
+*.pyc
+*.pyo
+*.pyd
+*.h5
+.env
+.DS_Store
+*.sqlite3
+instance/
+*.log
