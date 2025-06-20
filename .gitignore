@@ -2,7 +2,6 @@ uploads/
 *.pyc
 *.pyo
 *.pyd
-*.h5
 .env
 .DS_Store
 *.sqlite3
