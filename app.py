@@ -1,15 +1,19 @@
 from flask import Flask, request, jsonify, render_template
 import numpy as np
-from tensorflow.keras.models import load_model
+import tflite_runtime.interpreter as tflite
 from PIL import Image
 import os
 import cv2
-import logging
 
 app = Flask(__name__)
 
-# Load model
-model = load_model('model/model.h5')
+# Load TFLite model and allocate tensors.
+interpreter = tflite.Interpreter(model_path='model/model.tflite')
+interpreter.allocate_tensors()
+
+# Get input and output tensor details.
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -94,18 +98,45 @@ def predict():
     file.save(img_path)
     
     try:
-        digits = extract_digits(img_path)
-        if not digits:
-            # Fallback to single digit processing
-            img = Image.open(img_path).convert('L').resize((28, 28))
-            img_array = 255 - np.array(img)  # Invert
-            img_array = img_array.astype('float32') / 255.0
-            digits = [img_array.reshape(1, 28, 28, 1)]
+        # This list will hold the numpy arrays of digit images (1, 28, 28, 1) ready for model
+        digit_image_list = []
+
+        extracted_digits_from_cv2 = extract_digits(img_path) # Returns list of preprocessed np arrays
+
+        if not extracted_digits_from_cv2:
+            app.logger.info(f"extract_digits did not find contours from {img_path}, attempting fallback single image processing.")
+            # Fallback: process img_path to a single np array
+            img_pil = Image.open(img_path).convert('L').resize((28, 28))
+            img_array_np = np.array(img_pil)
+            # Invert colors (assuming standard MNIST: white digit on black background)
+            # and normalize to [0, 1] as float32
+            img_array_np = (255.0 - img_array_np.astype('float32')) / 255.0
+            digit_image_list.append(img_array_np.reshape(1, 28, 28, 1))
+        else:
+            # Ensure all images from extract_digits are float32, though they should be already
+            for digit_array in extracted_digits_from_cv2:
+                 if digit_array.dtype != np.float32:
+                    digit_image_list.append(digit_array.astype(np.float32))
+                 else:
+                    digit_image_list.append(digit_array)
 
         predictions = []
-        for digit in digits:
-            pred = model.predict(digit)
-            predictions.append(int(np.argmax(pred)))
+        if not digit_image_list:
+            app.logger.error(f"No digit images to process from {img_path} after all attempts.")
+            # Optionally, return a specific message to the user
+            # return jsonify(error="Could not detect any digits in the image."), 400
+        else:
+            for digit_img_np in digit_image_list:
+                # Ensure input tensor is float32 (it should be from preprocessing)
+                # This double check might be redundant if extract_digits and fallback are reliable
+                if digit_img_np.dtype != np.float32:
+                    digit_img_np = digit_img_np.astype(np.float32)
+
+                # Set tensor, invoke, get output
+                interpreter.set_tensor(input_details[0]['index'], digit_img_np)
+                interpreter.invoke()
+                output_data = interpreter.get_tensor(output_details[0]['index'])
+                predictions.append(int(np.argmax(output_data)))
 
         os.remove(img_path)  # Cleanup
         
@@ -114,8 +145,9 @@ def predict():
             digit_count=len(predictions))
         
     except Exception as e:
-        logging.error(f"Error: {str(e)}")
-        return jsonify(error=str(e)), 500
+        # Use app.logger for Flask apps for better context and request info
+        app.logger.error(f"Error during prediction for {img_path}: {str(e)}", exc_info=True)
+        return jsonify(error=f"An internal error occurred during prediction."), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
